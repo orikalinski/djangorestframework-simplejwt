@@ -61,13 +61,13 @@ class TokenObtainSerializer(serializers.Serializer):
 
 class TokenObtainPairSerializer(TokenObtainSerializer):
     @classmethod
-    def get_token(cls, user):
-        return RefreshToken.for_user(user)
+    def get_token(cls, user, lifetime=None):
+        return RefreshToken.for_user(user, lifetime=lifetime)
 
-    def validate(self, attrs):
+    def validate(self, attrs, lifetime=None):
         data = super().validate(attrs)
 
-        refresh = self.get_token(self.user)
+        refresh = self.get_token(self.user, lifetime=lifetime)
 
         data['refresh'] = str(refresh)
         data['access'] = str(refresh.access_token)

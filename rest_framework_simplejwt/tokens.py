@@ -21,7 +21,7 @@ class Token:
     token_type = None
     lifetime = None
 
-    def __init__(self, token=None, verify=True):
+    def __init__(self, token=None, verify=True, lifetime=None):
         """
         !!!! IMPORTANT !!!! MUST raise a TokenError with a user-facing error
         message if the given token is invalid, expired, or otherwise not safe
@@ -29,6 +29,7 @@ class Token:
         """
         if self.token_type is None or self.lifetime is None:
             raise TokenError(_('Cannot create token with no type or lifetime'))
+        lifetime = lifetime or self.lifetime
 
         self.token = token
         self.current_time = aware_utcnow()
@@ -51,7 +52,7 @@ class Token:
             self.payload = {api_settings.TOKEN_TYPE_CLAIM: self.token_type}
 
             # Set "exp" and "iat" claims with default value
-            self.set_exp(from_time=self.current_time, lifetime=self.lifetime)
+            self.set_exp(from_time=self.current_time, lifetime=lifetime)
             self.set_iat(at_time=self.current_time)
 
             # Set "jti" claim
@@ -168,7 +169,7 @@ class Token:
             raise TokenError(format_lazy(_("Token '{}' claim has expired"), claim))
 
     @classmethod
-    def for_user(cls, user):
+    def for_user(cls, user, lifetime=None):
         """
         Returns an authorization token for the given user that will be provided
         after authenticating the user's credentials.
@@ -177,7 +178,7 @@ class Token:
         if not isinstance(user_id, int):
             user_id = str(user_id)
 
-        token = cls()
+        token = cls(lifetime=lifetime)
         token[api_settings.USER_ID_CLAIM] = user_id
 
         return token
@@ -235,11 +236,11 @@ class BlacklistMixin:
             return BlacklistedToken.objects.get_or_create(token=token)
 
         @classmethod
-        def for_user(cls, user):
+        def for_user(cls, user, lifetime=None):
             """
             Adds this token to the outstanding token list.
             """
-            token = super().for_user(user)
+            token = super().for_user(user, lifetime=lifetime)
 
             jti = token[api_settings.JTI_CLAIM]
             exp = token['exp']
